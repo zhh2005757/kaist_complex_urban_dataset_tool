@@ -42,6 +42,82 @@ int VelodyneConverter::Convert() {
     return 0;
 }
 
+void VelodyneConverter::RecoverVLP16Timestamp(const VPointCloud::Ptr input_cloud,
+                                              RTPointCloud::Ptr output_cloud)
+{
+    // TODO It is not collected in order from top to bottom
+    double VLP16_time_block_[1824][16];
+    for (unsigned int w = 0; w < 1824; w++)
+    {
+        for (unsigned int h = 0; h < 16; h++)
+        {
+            VLP16_time_block_[w][h] =
+                h * 2.304 * 1e-6 + w * 55.296 * 1e-6; /// VLP_16 16*1824
+        }
+    }
+
+    double lidar_fov_down = -15.0;
+    double lidar_fov_resolution = 2.0;
+
+    double first_horizon_angle;
+    double max_horizon_angle = 0;
+    bool rot_half = false;
+
+    for (size_t i = 0; i < input_cloud->size(); i++)
+    {
+        VPoint raw_point = input_cloud->points[i];
+        if (!pcl_isfinite(raw_point.x))
+            continue;
+        double depth = sqrt(raw_point.x * raw_point.x + raw_point.y * raw_point.y +
+                            raw_point.z * raw_point.z);
+        if (depth == 0)
+            continue;
+        double pitch = asin(raw_point.z / depth) / M_PI * 180.0;
+
+        int ring = std::round((pitch - lidar_fov_down) / lidar_fov_resolution);
+        if (ring < 0 || ring >= 16)
+            continue;
+
+        double horizon_angle = atan2(raw_point.y, -raw_point.x) / M_PI * 180.0;
+        if (i == 0)
+        {
+            first_horizon_angle = horizon_angle;
+        }
+        horizon_angle -= first_horizon_angle;
+        if (horizon_angle < 0)
+            rot_half = true;
+        if (rot_half)
+            horizon_angle += 360;
+        int firing = round(horizon_angle / 0.2);
+        if (firing < 0 || firing >= 1824)
+            continue;
+        double point_time = VLP16_time_block_[firing][ring];
+
+        RTPoint p;
+        p.x = raw_point.x;
+        p.y = raw_point.y;
+        p.z = raw_point.z;
+
+        p.intensity = raw_point.intensity;
+        p.ring = ring;
+        p.time = (float)point_time;
+        output_cloud->push_back(p);
+
+        if (max_horizon_angle < horizon_angle)
+            max_horizon_angle = horizon_angle;
+    }
+
+    static double full_size = 16 * 1824;
+    static double required_size = full_size * 0.8;
+
+    // if (output_cloud->size() < required_size && max_horizon_angle < 350) {
+    //   double percent = (double(output_cloud->size()) / full_size);
+    //   std::cout << "points percent[" << percent
+    //             << "] of /velodyne_points; horizon angle[" << max_horizon_angle
+    //             << "]\n";
+    // }
+}
+
 void VelodyneConverter::ConvertLeft(const std::string& stamp_file, const std::string& data_dir, const std::string& bag_file,
                                 const std::string& topic, const std::string& frame_id) {
     rosbag::Bag bag(bag_file, rosbag::bagmode::Write);
@@ -67,27 +143,32 @@ void VelodyneConverter::ConvertLeft(const std::string& stamp_file, const std::st
         }
         std::ifstream file;
         file.open(frame_file, std::ios::in | std::ios::binary);
-        pcl::PointCloud<PointXYZIR> pcl_cloud;
-        pcl_cloud.clear();
-
+        pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_cloud(new VPointCloud);
+//        pcl::PointCloud<PointXYZIR> pcl_cloud;
+//        pcl_cloud.clear();
         float angle;
         uint16_t ring;
-
+        float time;
         while (!file.eof()) {
-            PointXYZIR point;
+            pcl::PointXYZI point;
             file.read(reinterpret_cast<char *>(&point.x), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.y), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.z), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.intensity), sizeof(float));
-            angle = atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / M_PI * 180 + 15;
-            ring = round(angle / 2);
-            point.ring = ring;
-            pcl_cloud.points.push_back(point);
+//            angle = atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / M_PI * 180 + 15;
+//            ring = round(angle / 2);
+//            point.ring = ring;
+            pcl_cloud->points.push_back(point);
         }
         file.close();
+
+        RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+        RecoverVLP16Timestamp(pcl_cloud, cloud_with_time);
+
         sensor_msgs::PointCloud2 cloud;
-        pcl::toROSMsg(pcl_cloud, cloud);
+        pcl::toROSMsg(*cloud_with_time, cloud);
         cloud.header.stamp.fromNSec(all_stamps[i]);
+        cloud.header.stamp -= ros::Duration(0.1); // why to do this?
         cloud.header.frame_id = frame_id;
         bag.write(topic, cloud.header.stamp, cloud);
         ROS_INFO("bag write %s, %u points\n", topic.c_str(), cloud.height * cloud.width);
@@ -123,27 +204,32 @@ void VelodyneConverter::ConvertRight(const std::string& stamp_file, const std::s
         }
         std::ifstream file;
         file.open(frame_file, std::ios::in | std::ios::binary);
-        pcl::PointCloud<PointXYZIR> pcl_cloud;
-        pcl_cloud.clear();
-
+        pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_cloud(new VPointCloud);
+//        pcl::PointCloud<PointXYZIR> pcl_cloud;
+//        pcl_cloud.clear();
         float angle;
         uint16_t ring;
-
+        float time;
         while (!file.eof()) {
-            PointXYZIR point;
+            pcl::PointXYZI point;
             file.read(reinterpret_cast<char *>(&point.x), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.y), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.z), sizeof(float));
             file.read(reinterpret_cast<char *>(&point.intensity), sizeof(float));
-            angle = atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / M_PI * 180 + 15;
-            ring = round(angle / 2);
-            point.ring = ring + 16;
-            pcl_cloud.points.push_back(point);
+//            angle = atan2(point.z, sqrt(point.x * point.x + point.y * point.y)) / M_PI * 180 + 15;
+//            ring = round(angle / 2);
+//            point.ring = ring + 16;
+            pcl_cloud->points.push_back(point);
         }
         file.close();
+
+        RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+        RecoverVLP16Timestamp(pcl_cloud, cloud_with_time);
+
         sensor_msgs::PointCloud2 cloud;
-        pcl::toROSMsg(pcl_cloud, cloud);
+        pcl::toROSMsg(*cloud_with_time, cloud);
         cloud.header.stamp.fromNSec(all_stamps[i]);
+        cloud.header.stamp -= ros::Duration(0.1); // why to do this?
         cloud.header.frame_id = frame_id;
         bag.write(topic, cloud.header.stamp, cloud);
         ROS_INFO("bag write %s, %u points\n", topic.c_str(), cloud.height * cloud.width);

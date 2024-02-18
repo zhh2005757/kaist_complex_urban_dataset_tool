@@ -13,19 +13,22 @@
 #include <pcl/point_types.h>
 
 
-struct VelodynePointXYZIR
+// Velodyne
+struct PointXYZIRT
 {
     PCL_ADD_POINT4D
-    PCL_ADD_INTENSITY;
+        PCL_ADD_INTENSITY;
     uint16_t ring;
+    float time;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
-POINT_CLOUD_REGISTER_POINT_STRUCT (VelodynePointXYZIR,
-    (float, x, x) (float, y, y) (float, z, z) (float, intensity, intensity)
-    (uint16_t, ring, ring)
-)
 
-using PointXYZIR = VelodynePointXYZIR;
+POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIRT,
+(float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint16_t, ring, ring)(float, time, time))
+typedef PointXYZIRT RTPoint;
+typedef pcl::PointCloud<RTPoint> RTPointCloud;
+typedef pcl::PointXYZI VPoint;
+typedef pcl::PointCloud<VPoint> VPointCloud;
 
 
 namespace kaist2bag {
@@ -48,6 +51,9 @@ private:
     std::string left_bag_name_;
     std::string right_topic_;
     std::string right_bag_name_;
+
+    void RecoverVLP16Timestamp(const VPointCloud::Ptr input_cloud,
+                               RTPointCloud::Ptr output_cloud);
 
     void ConvertLeft(const std::string& stamp_file, const std::string& data_dir,
                  const std::string& bag_file, const std::string& topic,

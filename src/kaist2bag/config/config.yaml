@@ -1,10 +1,10 @@
-dataset: "/media/zhh2005757/OS/Data/urban26-dongtan"
-save_to: "/home/zhh2005757/kaist/urban-26/bag"
+dataset: "/media/zhh2005757/OS/Data/urban07"
+save_to: "/media/zhh2005757/Extreme SSD/urban07"
 
 altimeter: false
 altimeter_topic: "/altimeter_data"
 
-encoder: true
+encoder: false
 wheel_odom_topic: "/odom"
 # encoder_irp_topic: "/encoder_count"
 # encoder_raw_topic: "/joint_states"
@@ -23,7 +23,7 @@ imu_irp_topic: "/xsens_imu_data"
 imu_raw_topic: "/imu/data_raw"
 imu_mag_topic: "/imu/mag"
 
-velodyne: false
+velodyne: true
 velodyne_left_topic: "/ns2/velodyne_points"
 velodyne_right_topic: "/ns1/velodyne_points"
 
