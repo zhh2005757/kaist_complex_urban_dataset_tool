@@ -1,24 +1,24 @@
-dataset: "/media/zhh2005757/OS/Data/urban07"
-save_to: "/media/zhh2005757/Extreme SSD/urban07"
+dataset: "/media/zhh2005757/OS/Data/urban17"
+save_to: "/media/zhh2005757/Extreme SSD/urban17"
 
-altimeter: false
+altimeter: true
 altimeter_topic: "/altimeter_data"
 
-encoder: false
+encoder: true
 wheel_odom_topic: "/odom"
 # encoder_irp_topic: "/encoder_count"
 # encoder_raw_topic: "/joint_states"
 
-fog: false
+fog: true
 fog_topic: "/dsp1760_data"
 
-gps: false
+gps: true
 gps_topic: "/gps/fix"
 
-vrs: false
+vrs: true
 vrs_topic: "/vrs_gps_data"
 
-imu: false
+imu: true
 imu_irp_topic: "/xsens_imu_data"
 imu_raw_topic: "/imu/data_raw"
 imu_mag_topic: "/imu/mag"
@@ -27,7 +27,7 @@ velodyne: true
 velodyne_left_topic: "/ns2/velodyne_points"
 velodyne_right_topic: "/ns1/velodyne_points"
 
-sick: false
+sick: true
 sick_back_topic: "/lms511_back/scan"
 sick_middle_topic: "/lms511_middle/scan"
 
