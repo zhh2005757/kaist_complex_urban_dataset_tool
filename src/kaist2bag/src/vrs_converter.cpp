@@ -36,10 +36,10 @@ int VrsConverter::Convert() {
            heading_magnet, speed_knot, speed_km;
     int fix_state, number_of_sat, heading_valid;
     char GNVTG_mode;
-    while (fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%d,%d,%lf,%lf,%lf,%lf,%d,%lf,%lf,%lf,%c,%lf\n",
+    while (fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%d,%d,%lf,%lf,%lf,%lf,%d,%lf,%lf,%lf,%c\n",
                   &stamp,&latitude,&longitude,&x_coordinate,&y_coordinate,&altitude,&fix_state,
                   &number_of_sat,&horizental_precision,&lat_std,&lon_std,&altitude_std,
-                  &heading_valid,&heading_magnet,&speed_knot,&speed_km,&GNVTG_mode, &altitude_orthometric) == 18) {
+                  &heading_valid,&heading_magnet,&speed_knot,&speed_km,&GNVTG_mode) == 17) {
 
         
         gps_data.header.stamp.fromNSec(stamp);

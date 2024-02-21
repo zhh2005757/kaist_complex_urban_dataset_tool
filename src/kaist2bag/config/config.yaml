@@ -1,5 +1,5 @@
-dataset: "/media/zhh2005757/OS/Data/urban17"
-save_to: "/media/zhh2005757/Extreme SSD/urban17"
+dataset: "/media/zhh2005757/OS/Data/urban27"
+save_to: "/media/zhh2005757/Extreme SSD/urban27"
 
 altimeter: true
 altimeter_topic: "/altimeter_data"
