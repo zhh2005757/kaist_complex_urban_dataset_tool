@@ -47,9 +47,9 @@ int VrsConverter::Convert() {
         gps_data.latitude = latitude;
         gps_data.longitude = longitude;
         gps_data.altitude = altitude;
-        gps_data.position_covariance[0] = lat_std;
-        gps_data.position_covariance[4] = lon_std;
-        gps_data.position_covariance[8] = altitude_std;
+        gps_data.position_covariance[0] = lat_std * lat_std;
+        gps_data.position_covariance[4] = lon_std * lon_std;
+        gps_data.position_covariance[8] = altitude_std * altitude_std;
 
         bag.write(topic_, gps_data.header.stamp, gps_data);
 
