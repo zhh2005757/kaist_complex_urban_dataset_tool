@@ -1,5 +1,5 @@
-dataset: "/media/zhh2005757/OS/Data/urban27"
-save_to: "/media/zhh2005757/Extreme SSD/urban27"
+dataset: "/media/zhh2005757/OS/Data/urban39-pankyo"
+save_to: "/media/zhh2005757/Extreme SSD/urban39"
 
 altimeter: true
 altimeter_topic: "/altimeter_data"
@@ -31,6 +31,6 @@ sick: true
 sick_back_topic: "/lms511_back/scan"
 sick_middle_topic: "/lms511_middle/scan"
 
-stereo: false
+stereo: true
 stereo_left_topic: "/stereo/left/image_raw"
 stereo_right_topic: "/stereo/right/image_raw"

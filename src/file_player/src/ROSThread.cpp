@@ -1115,6 +1115,81 @@ void ROSThread::TimerCallback(const ros::TimerEvent&)
       prev_clock_stamp_ = 0;
     }
 }
+void ROSThread::RecoverVLP16Timestamp(const VPointCloud input_cloud,
+                                              RTPointCloud::Ptr output_cloud)
+{
+    // TODO It is not collected in order from top to bottom
+    double VLP16_time_block_[1824][16];
+    for (unsigned int w = 0; w < 1824; w++)
+    {
+        for (unsigned int h = 0; h < 16; h++)
+        {
+            VLP16_time_block_[w][h] =
+                h * 2.304 * 1e-6 + w * 55.296 * 1e-6; /// VLP_16 16*1824
+        }
+    }
+
+    double lidar_fov_down = -15.0;
+    double lidar_fov_resolution = 2.0;
+
+    double first_horizon_angle;
+    double max_horizon_angle = 0;
+    bool rot_half = false;
+
+    for (size_t i = 0; i < input_cloud.size(); i++)
+    {
+        VPoint raw_point = input_cloud.points[i];
+        if (!pcl_isfinite(raw_point.x))
+            continue;
+        double depth = sqrt(raw_point.x * raw_point.x + raw_point.y * raw_point.y +
+                            raw_point.z * raw_point.z);
+        if (depth == 0)
+            continue;
+        double pitch = asin(raw_point.z / depth) / M_PI * 180.0;
+
+        int ring = std::round((pitch - lidar_fov_down) / lidar_fov_resolution);
+        if (ring < 0 || ring >= 16)
+            continue;
+
+        double horizon_angle = atan2(raw_point.y, -raw_point.x) / M_PI * 180.0;
+        if (i == 0)
+        {
+            first_horizon_angle = horizon_angle;
+        }
+        horizon_angle -= first_horizon_angle;
+        if (horizon_angle < 0)
+            rot_half = true;
+        if (rot_half)
+            horizon_angle += 360;
+        int firing = round(horizon_angle / 0.2);
+        if (firing < 0 || firing >= 1824)
+            continue;
+        double point_time = VLP16_time_block_[firing][ring];
+
+        RTPoint p;
+        p.x = raw_point.x;
+        p.y = raw_point.y;
+        p.z = raw_point.z;
+
+        p.intensity = raw_point.intensity;
+        p.ring = ring;
+        p.time = (float)point_time;
+        output_cloud->push_back(p);
+
+        if (max_horizon_angle < horizon_angle)
+            max_horizon_angle = horizon_angle;
+    }
+
+    static double full_size = 16 * 1824;
+    static double required_size = full_size * 0.8;
+
+    // if (output_cloud->size() < required_size && max_horizon_angle < 350) {
+    //   double percent = (double(output_cloud->size()) / full_size);
+    //   std::cout << "points percent[" << percent
+    //             << "] of /velodyne_points; horizon angle[" << max_horizon_angle
+    //             << "]\n";
+    // }
+}
 void ROSThread::VelodyneLeftThread()
 {
   int current_file_index = 0;
@@ -1164,7 +1239,10 @@ void ROSThread::VelodyneLeftThread()
             }
             file.close();
 
-            pcl::toROSMsg(cloud, publish_cloud);
+            RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+            RecoverVLP16Timestamp(cloud, cloud_with_time);
+
+            pcl::toROSMsg(*cloud_with_time, publish_cloud);
             publish_cloud.header.stamp.fromNSec(data);
             publish_cloud.header.frame_id = "left_velodyne";
             velodyne_left_pub_.publish(publish_cloud);
@@ -1201,7 +1279,10 @@ void ROSThread::VelodyneLeftThread()
               cloud.points.push_back (point);
           }
           file.close();
-          pcl::toROSMsg(cloud, publish_cloud);
+          RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+          RecoverVLP16Timestamp(cloud, cloud_with_time);
+
+          pcl::toROSMsg(*cloud_with_time, publish_cloud);
           velodyne_left_next_ = make_pair(velodyne_left_file_list_[current_file_index+1], publish_cloud);
       }
       previous_file_index = current_file_index;
@@ -1259,7 +1340,10 @@ void ROSThread::VelodyneRightThread()
             }
             file.close();
 
-            pcl::toROSMsg(cloud, publish_cloud);
+            RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+            RecoverVLP16Timestamp(cloud, cloud_with_time);
+
+            pcl::toROSMsg(*cloud_with_time, publish_cloud);
             publish_cloud.header.stamp.fromNSec(data);
             publish_cloud.header.frame_id = "right_velodyne";
             velodyne_right_pub_.publish(publish_cloud);
@@ -1296,7 +1380,10 @@ void ROSThread::VelodyneRightThread()
               cloud.points.push_back (point);
           }
           file.close();
-          pcl::toROSMsg(cloud, publish_cloud);
+          RTPointCloud::Ptr cloud_with_time(new RTPointCloud);
+          RecoverVLP16Timestamp(cloud, cloud_with_time);
+
+          pcl::toROSMsg(*cloud_with_time, publish_cloud);
           velodyne_right_next_ = make_pair(velodyne_right_file_list_[current_file_index+1], publish_cloud);
       }
 
